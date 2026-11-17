@@ -75,7 +75,8 @@
       if (!b.some(r => r.includes(0)) && !b.some((r, y) => r.some((v, x) => x < 3 && v === r[x + 1] || y < 3 && v === b[y + 1][x]))) {
         over = true;
         msg.textContent = "Game over! Final score: " + s;
-        record("2048", s)
+        const name2048 = prompt("Enter your name:", getPlayerName() || generateRandomName());
+        record("2048", s, name2048 || undefined);
       }
     }
   }

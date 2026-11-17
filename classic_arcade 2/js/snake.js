@@ -149,7 +149,8 @@
     clearInterval(timer);
     running = false;
     document.getElementById("message").textContent = "Game over! Final score: " + score;
-    record("Snake", score);
+    const nameSnake = prompt("Enter your name:", getPlayerName() || generateRandomName());
+    record("Snake", score, nameSnake || undefined);
   }
 
   function tick() {

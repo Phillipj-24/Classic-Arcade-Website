@@ -131,7 +131,8 @@
     run = false;
     cancelAnimationFrame(raf);
     document.getElementById("message").textContent = "Game over! Final score: " + score;
-    record("Tetris", score)
+    const nameTetris = prompt("Enter your name:", getPlayerName() || generateRandomName());
+    record("Tetris", score, nameTetris || undefined);
   }
 
   function loop(t = 0) {
