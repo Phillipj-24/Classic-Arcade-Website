@@ -64,6 +64,15 @@
     leaveButton.disabled = !p;
     leaveButton.textContent = onlineGameId ? "Leave game" : "Find / leave previous game";
     document.getElementById("start").disabled = Boolean(onlineGameId);
+
+    const gameIdDisplay = document.getElementById("currentGameIdDisplay");
+    const gameIdValue = document.getElementById("currentGameIdValue");
+    if (onlineGameId) {
+      gameIdDisplay.hidden = false;
+      gameIdValue.textContent = onlineGameId;
+    } else {
+      gameIdDisplay.hidden = true;
+    }
   }
 
   function foodPosition() {
@@ -365,6 +374,7 @@
     if (!getPlayer()) return;
     clearInterval(timer);
     clearInterval(pollTimer);
+    const stuckGameId = onlineGameId;
     onlineGameId = null;
     mode = "solo";
     running = false;
@@ -376,7 +386,10 @@
     draw();
     document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
     document.getElementById("forceLeavePanel").hidden = false;
-    showOnlineMessage("Local state cleared. Enter your Game ID above and click \"Force Leave by Game ID\" to tell the server to release you.");
+    if (stuckGameId) {
+      document.getElementById("forceLeaveGameId").value = stuckGameId;
+    }
+    showOnlineMessage("Local state cleared. Your Game ID is shown above — click \"Force Leave by Game ID\" to tell the server to release you.");
     await refreshAvailableGames();
   }
 
@@ -519,6 +532,13 @@
   document.getElementById("leaveGame").addEventListener("click", leaveOnlineGame);
   document.getElementById("forceResetGame").addEventListener("click", forceResetGame);
   document.getElementById("forceLeaveById").addEventListener("click", forceLeaveById);
+  document.getElementById("copyGameId").addEventListener("click", () => {
+    const value = document.getElementById("currentGameIdValue").textContent;
+    if (!value) return;
+    navigator.clipboard.writeText(value).then(() => {
+      showOnlineMessage("Game ID copied: " + value);
+    });
+  });
 
   const savedPlayer = loadPlayer();
   if (savedPlayer) showOnlineMessage("Signed in as " + savedPlayer.name + ".");
@@ -527,6 +547,19 @@
   food = foodPosition();
   document.getElementById("score").textContent = 0;
   updatePlayerUI();
+  const p = getPlayer();
+  if (p && !onlineGameId) {
+    try {
+      const saved = localStorage.getItem(savedGameKey(p.playerId));
+      if (saved) {
+        const session = JSON.parse(saved);
+        if (session && session.gameId) {
+          document.getElementById("forceLeaveGameId").value = session.gameId;
+          document.getElementById("forceLeavePanel").hidden = false;
+        }
+      }
+    } catch (e) {}
+  }
   draw();
   resumeSavedGame();
   refreshAvailableGames();

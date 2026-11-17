@@ -62,6 +62,11 @@
           <button type="button" class="secondary-button" id="leaveGame" disabled>Leave game</button>
           <button type="button" class="secondary-button" id="forceResetGame" style="color:#ff625f;">Force Leave Stuck Game</button>
         </div>
+        <div id="currentGameIdDisplay" class="game-id-display" hidden>
+          <label>Your Game ID:</label>
+          <span id="currentGameIdValue"></span>
+          <button type="button" id="copyGameId" class="secondary-button" style="font-size:11px;padding:4px 8px;">Copy</button>
+        </div>
         <div id="forceLeavePanel" class="force-leave-panel" hidden>
           <label for="forceLeaveGameId">Game ID to force leave:</label>
           <input id="forceLeaveGameId" type="text" placeholder="e.g. abc123" maxlength="64">

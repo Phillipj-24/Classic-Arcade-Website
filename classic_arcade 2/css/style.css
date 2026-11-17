@@ -322,6 +322,9 @@ select { margin-left: 6px; padding: 8px; border: 1px solid var(--border); border
 .player-session strong { color: var(--text); }
 .online-games { display: grid; gap: 8px; padding-left: 20px; color: var(--muted); font-size: 13px; }
 .online-games button { margin-left: 10px; }
+.game-id-display { margin-top: 10px; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-raised); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); }
+.game-id-display label { margin: 0; font-weight: 800; color: var(--text); }
+.game-id-display span { font-family: monospace; color: var(--lime); }
 .force-leave-panel { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface-raised); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .force-leave-panel label { font-size: 12px; color: var(--muted); margin: 0; }
 .force-leave-panel input { flex: 1; min-width: 120px; padding: 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; }
