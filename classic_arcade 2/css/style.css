@@ -7,7 +7,7 @@
   --text: #f4f3e9;
   --muted: #aab4aa;
   --border: #39453b;
-  --accent: #ff625f;
+  --accent: #4d9fff;
   --accent-text: #171916;
   --game-board: #303a31;
   --tile-empty: #39443a;
@@ -98,7 +98,7 @@ button,
 }
 
 button:hover,
-.btn:hover { transform: translateY(-2px); box-shadow: 0 7px 22px rgb(255 98 95 / 24%); }
+.btn:hover { transform: translateY(-2px); box-shadow: 0 7px 22px color-mix(in srgb, var(--accent) 24%, transparent); }
 button:active,
 .btn:active { transform: translateY(0); }
 
