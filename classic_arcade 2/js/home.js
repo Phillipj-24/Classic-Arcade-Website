@@ -13,6 +13,48 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("saved").textContent = a.length;
   document.getElementById("top").textContent = a.length ? Math.max(...a.map(x => x.score)).toLocaleString() : 0;
   loadSnakeLeaderboard();
+
+  const playerForm = document.getElementById("playerForm");
+  const playerSession = document.getElementById("playerSession");
+  const playerLabel = document.getElementById("playerLabel");
+  const signinMessage = document.getElementById("signinMessage");
+  const loginButton = document.getElementById("loginButton");
+  const registerButton = document.getElementById("registerButton");
+  const logoutPlayer = document.getElementById("logoutPlayer");
+  const playerName = document.getElementById("playerName");
+  const playerPassword = document.getElementById("playerPassword");
+
+  function updateSigninUI() {
+    const p = getPlayer();
+    playerForm.hidden = Boolean(p);
+    playerSession.hidden = !p;
+    if (p) playerLabel.textContent = p.name;
+  }
+
+  playerForm.addEventListener("submit", event => {
+    event.preventDefault();
+    authenticate(false, playerName, playerPassword, signinMessage).then(() => {
+      updateSigninUI();
+    });
+  });
+
+  registerButton.addEventListener("click", () => {
+    authenticate(true, playerName, playerPassword, signinMessage).then(() => {
+      updateSigninUI();
+    });
+  });
+
+  logoutPlayer.addEventListener("click", () => {
+    logout();
+    updateSigninUI();
+    signinMessage.textContent = "Signed out.";
+  });
+
+  const savedPlayer = loadPlayer();
+  if (savedPlayer) {
+    signinMessage.textContent = "Signed in as " + savedPlayer.name + ".";
+  }
+  updateSigninUI();
 });
 
 async function loadSnakeLeaderboard() {

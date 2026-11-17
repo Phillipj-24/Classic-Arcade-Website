@@ -83,6 +83,26 @@
         </div>
         <p class="note">2048, Tetris, and solo Snake scores stay in this browser. Multiplayer Snake scores are shared through the game service.</p>
       </section>
+
+      <section id="signin">
+        <small>PLAYER ACCOUNT</small>
+        <h2>Sign In</h2>
+        <form id="playerForm" class="player-form">
+          <label for="playerName">Player name</label>
+          <input id="playerName" name="name" autocomplete="username" maxlength="40" required>
+          <label for="playerPassword">Password</label>
+          <input id="playerPassword" name="password" type="password" autocomplete="current-password" required>
+          <div class="online-actions">
+            <button type="submit" id="loginButton">Sign in</button>
+            <button type="button" class="secondary-button" id="registerButton">Create account</button>
+          </div>
+        </form>
+        <div id="playerSession" class="player-session" hidden>
+          <span>Signed in as <strong id="playerLabel"></strong></span>
+          <button type="button" class="secondary-button" id="logoutPlayer">Sign out</button>
+        </div>
+        <p id="signinMessage" class="note" role="status" aria-live="polite"></p>
+      </section>
     </main>
     <footer>CLASSIC ARCADE <span>Built for the love of the game.</span></footer>
   </body>
