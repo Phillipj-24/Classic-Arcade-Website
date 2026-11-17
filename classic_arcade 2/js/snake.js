@@ -549,6 +549,8 @@
         if (session && session.gameId) {
           document.getElementById("forceLeaveGameId").value = session.gameId;
           document.getElementById("forceLeavePanel").hidden = false;
+          document.getElementById("currentGameIdValue").textContent = session.gameId;
+          document.getElementById("currentGameIdDisplay").hidden = false;
         }
       }
     } catch (e) {}
