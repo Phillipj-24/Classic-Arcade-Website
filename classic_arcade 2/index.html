@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Classic Arcade</title>
     <link rel="stylesheet" href="css/style.css">
+    <script defer src="js/shared.js"></script>
+    <script defer src="js/api.js"></script>
     <script defer src="js/home.js"></script>
   </head>
   <body>
@@ -50,18 +52,23 @@
       </section>
       <section id="scores">
         <small>THE HALL OF FAME</small>
-        <h2>Local leaderboards</h2>
+        <h2>Leaderboards</h2>
         <div class="cards">
           <article>
-            <h3>2048</h3>
+            <h3>2048 · This browser</h3>
             <ol id="b2048"></ol>
           </article>
           <article>
-            <h3>Snake</h3>
+            <h3>Snake · Multiplayer</h3>
             <ol id="bSnake"></ol>
+            <p id="snakeLeaderboardMessage" class="note" role="status" aria-live="polite"></p>
           </article>
           <article>
-            <h3>Tetris</h3>
+            <h3>Snake · This browser</h3>
+            <ol id="bSnakeLocal"></ol>
+          </article>
+          <article>
+            <h3>Tetris · This browser</h3>
             <ol id="bTetris"></ol>
           </article>
         </div>
@@ -74,7 +81,7 @@
           <article>TOP SCORE<strong id="top">0</strong></article>
           <article>SCORES SAVED<strong id="saved">0</strong></article>
         </div>
-        <p class="note">Scores and preferences are saved in this browser only. There are no accounts or shared global rankings in this version.</p>
+        <p class="note">2048, Tetris, and solo Snake scores stay in this browser. Multiplayer Snake scores are shared through the game service.</p>
       </section>
     </main>
     <footer>CLASSIC ARCADE <span>Built for the love of the game.</span></footer>
