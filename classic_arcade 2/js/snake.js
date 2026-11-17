@@ -532,13 +532,6 @@
   document.getElementById("leaveGame").addEventListener("click", leaveOnlineGame);
   document.getElementById("forceResetGame").addEventListener("click", forceResetGame);
   document.getElementById("forceLeaveById").addEventListener("click", forceLeaveById);
-  document.getElementById("copyGameId").addEventListener("click", () => {
-    const value = document.getElementById("currentGameIdValue").textContent;
-    if (!value) return;
-    navigator.clipboard.writeText(value).then(() => {
-      showOnlineMessage("Game ID copied: " + value);
-    });
-  });
 
   const savedPlayer = loadPlayer();
   if (savedPlayer) showOnlineMessage("Signed in as " + savedPlayer.name + ".");
