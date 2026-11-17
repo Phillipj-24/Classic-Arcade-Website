@@ -62,6 +62,11 @@
           <button type="button" class="secondary-button" id="leaveGame" disabled>Leave game</button>
           <button type="button" class="secondary-button" id="forceResetGame" style="color:#ff625f;">Force Leave Stuck Game</button>
         </div>
+        <div id="forceLeavePanel" class="force-leave-panel" hidden>
+          <label for="forceLeaveGameId">Game ID to force leave:</label>
+          <input id="forceLeaveGameId" type="text" placeholder="e.g. abc123" maxlength="64">
+          <button type="button" class="secondary-button" id="forceLeaveById" style="color:#ff625f;">Force Leave by Game ID</button>
+        </div>
         <p id="onlineMessage" class="message" role="status" aria-live="polite">Sign in to play multiplayer.</p>
         <ul id="availableGames" class="online-games"></ul>
         <div class="online-leaderboard">

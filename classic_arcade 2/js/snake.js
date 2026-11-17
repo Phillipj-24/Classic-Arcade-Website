@@ -375,8 +375,40 @@
     updatePlayerUI();
     draw();
     document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
-    showOnlineMessage("Local game state reset. You can try creating a new game now.");
+    document.getElementById("forceLeavePanel").hidden = false;
+    showOnlineMessage("Local state cleared. Enter your Game ID above and click \"Force Leave by Game ID\" to tell the server to release you.");
     await refreshAvailableGames();
+  }
+
+  async function forceLeaveById() {
+    const gameIdInput = document.getElementById("forceLeaveGameId");
+    const gameId = gameIdInput.value.trim();
+    if (!gameId) {
+      showOnlineMessage("Please enter a Game ID.");
+      return;
+    }
+    const p = getPlayer();
+    if (!p) return showOnlineMessage("Sign in first.");
+    try {
+      await leaveSnakeGame(gameId, p.playerId);
+      clearInterval(timer);
+      clearInterval(pollTimer);
+      onlineGameId = null;
+      mode = "solo";
+      running = false;
+      try {
+        localStorage.removeItem(savedGameKey(p.playerId));
+      } catch (e) {}
+      updatePlayerUI();
+      draw();
+      document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
+      document.getElementById("forceLeavePanel").hidden = true;
+      gameIdInput.value = "";
+      showOnlineMessage("Server released you from game " + gameId + ". You can now create a new game.");
+      await refreshAvailableGames();
+    } catch (error) {
+      showOnlineMessage("Could not force leave game " + gameId + ": " + error.message);
+    }
   }
 
   async function refreshOnlineState() {
@@ -486,6 +518,7 @@
   document.getElementById("startGame").addEventListener("click", startOnlineGame);
   document.getElementById("leaveGame").addEventListener("click", leaveOnlineGame);
   document.getElementById("forceResetGame").addEventListener("click", forceResetGame);
+  document.getElementById("forceLeaveById").addEventListener("click", forceLeaveById);
 
   const savedPlayer = loadPlayer();
   if (savedPlayer) showOnlineMessage("Signed in as " + savedPlayer.name + ".");
