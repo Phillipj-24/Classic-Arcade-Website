@@ -295,7 +295,7 @@
       if (/already in a game/i.test(error.message)) {
         await refreshAvailableGames();
         if (!onlineGameId) {
-          showOnlineMessage("This account is already in a game, but the service did not list an open room to reconnect to. The API cannot look up an already-running game.");
+          showOnlineMessage("This account is already in a game on the server, but no open room was listed. Use \"Force Leave Stuck Game\" below to clear your local state, then try creating a new game.");
         }
       } else {
         showOnlineMessage("Could not create game: " + error.message);
@@ -335,7 +335,7 @@
         if (!Array.isArray(games)) throw new Error("Unexpected room list response.");
         const previousGame = matchingOpenGame(games);
         if (!previousGame) {
-          showOnlineMessage("No open room was found for this account. Refresh rooms or contact the game service if a running game is still assigned to you.");
+          showOnlineMessage("No open room was found for this account. Use \"Force Leave Stuck Game\" below to clear your local state, then try creating a new game.");
           return;
         }
         beginOnlineGame(previousGame.gameId, true);
@@ -359,6 +359,24 @@
     } catch (error) {
       showOnlineMessage("Could not leave game: " + error.message);
     }
+  }
+
+  async function forceResetGame() {
+    if (!getPlayer()) return;
+    clearInterval(timer);
+    clearInterval(pollTimer);
+    onlineGameId = null;
+    mode = "solo";
+    running = false;
+    const p = getPlayer();
+    try {
+      localStorage.removeItem(savedGameKey(p.playerId));
+    } catch (e) {}
+    updatePlayerUI();
+    draw();
+    document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
+    showOnlineMessage("Local game state reset. You can try creating a new game now.");
+    await refreshAvailableGames();
   }
 
   async function refreshOnlineState() {
@@ -467,6 +485,7 @@
   document.getElementById("refreshGames").addEventListener("click", refreshAvailableGames);
   document.getElementById("startGame").addEventListener("click", startOnlineGame);
   document.getElementById("leaveGame").addEventListener("click", leaveOnlineGame);
+  document.getElementById("forceResetGame").addEventListener("click", forceResetGame);
 
   const savedPlayer = loadPlayer();
   if (savedPlayer) showOnlineMessage("Signed in as " + savedPlayer.name + ".");
