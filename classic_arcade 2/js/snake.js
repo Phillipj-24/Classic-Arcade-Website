@@ -196,25 +196,18 @@
     d: { x: 1, y: 0, action: "right" }
   };
 
-  function queueOnlineAction(action) {
-    const qp = getPlayer();
-    if (!onlineGameId || !qp) return;
-    actionQueue = actionQueue
-      .then(async () => {
-        await sendSnakeAction(onlineGameId, qp.playerId, action);
-        await refreshOnlineState();
-      })
-      .catch(error => showOnlineMessage("Could not send move: " + error.message));
-  }
-
   function turn(nextDirection) {
-    if (mode === "online") {
-      queueOnlineAction(nextDirection.action);
-      return;
-    }
     if (!running) startSoloGame();
     if (nextDirection.x !== -direction.x || nextDirection.y !== -direction.y) {
       direction = nextDirection;
+      if (mode === "online") {
+        const qp = getPlayer();
+        if (onlineGameId && qp) {
+          sendSnakeAction(onlineGameId, qp.playerId, nextDirection.action).catch(
+            error => showOnlineMessage("Could not send move: " + error.message)
+          );
+        }
+      }
     }
   }
 
@@ -279,6 +272,7 @@
     mode = "online";
     onlineGameId = gameId;
     updatePlayerUI();
+    draw();
     canvas.focus({ preventScroll: true });
     showOnlineMessage(isHost
       ? "Room created. Start the game when the other player joins."
@@ -289,8 +283,14 @@
     } catch (error) {
       showOnlineMessage("Connected, but could not save this game for your next sign-in: " + error.message);
     }
+    // Start local game loop at solo speed for responsive input/movement
+    running = true;
+    timer = setInterval(() => {
+      if (running && mode === "online") tick();
+    }, 115);
+    // Poll server state at a faster interval to sync board and show opponent
+    pollTimer = setInterval(refreshOnlineState, 200);
     refreshOnlineState();
-    pollTimer = setInterval(refreshOnlineState, 1000);
   }
 
   async function createGame() {
