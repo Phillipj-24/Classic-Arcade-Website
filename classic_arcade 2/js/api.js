@@ -22,7 +22,9 @@ async function apiRequest(path, method, data) {
         var message = result && result.detail
             ? result.detail
             : "Server error: " + response.status;
-        throw new Error(message);
+        var error = new Error(message);
+        error.status = response.status;
+        throw error;
     }
 
     return result;

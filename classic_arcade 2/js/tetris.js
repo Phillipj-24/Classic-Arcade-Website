@@ -135,14 +135,14 @@
     record("Tetris", score, nameTetris || undefined);
   }
 
-  function loop(t = 0) {
+  function loop(t) {
     if (!run || pause) return;
     acc += t - last;
     last = t;
     if (acc > interval) drop();
     draw();
     update();
-    raf = requestAnimationFrame(loop)
+    if (run) raf = requestAnimationFrame(loop)
   }
 
   function start() {
@@ -152,27 +152,42 @@
     level = 1;
     interval = 800;
     acc = 0;
-    last = 0;
+    last = performance.now();
     run = true;
     pause = false;
     spawn();
     document.getElementById("message").textContent = "Game on! P pauses.";
-    loop()
+    draw();
+    update();
+    raf = requestAnimationFrame(loop)
   }
   document.addEventListener("keydown", e => {
-    if (!p) return;
-    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    if (!p || !run) return;
+    if (e.key.startsWith("Arrow") || e.code === "Space") {
       e.preventDefault();
+    }
+    if (e.key.toLowerCase() === "p") {
+      if (e.repeat) return;
+      pause = !pause;
+      cancelAnimationFrame(raf);
+      document.getElementById("message").textContent = pause ? "Paused — press P to resume." : "Game resumed.";
+      if (!pause) {
+        last = performance.now();
+        raf = requestAnimationFrame(loop);
+      }
+      return;
+    }
+    if (pause) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       p.x += e.key === "ArrowLeft" ? -1 : 1;
       if (hit()) p.x += e.key === "ArrowLeft" ? 1 : -1
     }
     if (e.key === "ArrowUp") rotate();
-    if (e.key === "ArrowDown" && run && !pause) {
-      drop();
-      score++
+    if (e.key === "ArrowDown") {
+      score++;
+      drop()
     }
-    if (e.code === "Space" && run && !pause) {
-      e.preventDefault();
+    if (e.code === "Space") {
       do {
         p.y++
       } while (!hit());
@@ -180,14 +195,6 @@
       merge();
       sweep();
       spawn()
-    }
-    if (e.key.toLowerCase() === "p" && run) {
-      pause = !pause;
-      document.getElementById("message").textContent = pause ? "Paused — press P to resume." : "Game resumed.";
-      if (!pause) {
-        last = 0;
-        loop()
-      }
     }
     draw();
     update()

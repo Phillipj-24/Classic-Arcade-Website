@@ -58,18 +58,18 @@
         <div class="online-actions">
           <button type="button" id="createGame" disabled>Create game</button>
           <button type="button" class="secondary-button" id="refreshGames">Refresh rooms</button>
-          <button type="button" class="secondary-button" id="startGame" disabled>Start game</button>
+          <button type="button" class="secondary-button" id="startGame" disabled>Ready / Start</button>
           <button type="button" class="secondary-button" id="leaveGame" disabled>Leave game</button>
-          <button type="button" class="secondary-button" id="forceResetGame" style="color:#ff625f;">Force Leave Stuck Game</button>
+          <button type="button" class="secondary-button" id="forceResetGame" disabled>Recover previous game</button>
         </div>
         <div id="currentGameIdDisplay" class="game-id-display" hidden>
           <label>Your Game ID:</label>
           <span id="currentGameIdValue"></span>
         </div>
         <div id="forceLeavePanel" class="force-leave-panel" hidden>
-          <label for="forceLeaveGameId">Game ID to force leave:</label>
+          <label for="forceLeaveGameId">Previous Game ID:</label>
           <input id="forceLeaveGameId" type="text" placeholder="e.g. abc123" maxlength="64">
-          <button type="button" class="secondary-button" id="forceLeaveById" style="color:#ff625f;">Force Leave by Game ID</button>
+          <button type="button" class="secondary-button" id="forceLeaveById">Leave this game</button>
         </div>
         <p id="onlineMessage" class="message" role="status" aria-live="polite">Sign in to play multiplayer.</p>
         <ul id="availableGames" class="online-games"></ul>

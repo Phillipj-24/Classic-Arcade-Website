@@ -303,7 +303,9 @@ select { margin-left: 6px; padding: 8px; border: 1px solid var(--border); border
 .online-panel h2 { margin-bottom: 8px; }
 .player-form { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; margin: 18px 0; }
 .player-form[hidden],
-.player-session[hidden] { display: none; }
+.player-session[hidden],
+.game-id-display[hidden],
+.force-leave-panel[hidden] { display: none; }
 .player-form label { color: var(--muted); font-size: 12px; }
 .player-form input {
   width: 100%;

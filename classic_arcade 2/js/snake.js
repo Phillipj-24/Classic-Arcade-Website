@@ -16,7 +16,12 @@
   let mode = "solo";
   let onlineGameId = null;
   let onlineStateBusy = false;
-  let actionQueue = Promise.resolve();
+  let soloTurnPending = false;
+  let onlineState = "waiting";
+  let onlineReady = false;
+  let onlineHead = null;
+  let onlineDirectionKnown = false;
+  let pendingOnlineTurn = null;
 
   const onlineMessage = document.getElementById("onlineMessage");
   const playerForm = document.getElementById("playerForm");
@@ -59,7 +64,8 @@
     playerSession.hidden = !p;
     document.getElementById("playerLabel").textContent = p ? p.name : "";
     document.getElementById("createGame").disabled = !p || Boolean(onlineGameId);
-    document.getElementById("startGame").disabled = !p || !onlineGameId;
+    document.getElementById("startGame").disabled = !p || !onlineGameId || onlineState !== "waiting" || onlineReady;
+    document.getElementById("forceResetGame").disabled = !p;
     const leaveButton = document.getElementById("leaveGame");
     leaveButton.disabled = !p;
     leaveButton.textContent = onlineGameId ? "Leave game" : "Find / leave previous game";
@@ -72,6 +78,7 @@
       gameIdValue.textContent = onlineGameId;
     } else {
       gameIdDisplay.hidden = true;
+      gameIdValue.textContent = "";
     }
   }
 
@@ -147,6 +154,7 @@
   }
 
   function tick() {
+    soloTurnPending = false;
     const head = {
       x: snake[0].x + direction.x,
       y: snake[0].y + direction.y
@@ -169,6 +177,7 @@
   }
 
   function startSoloGame() {
+    if (onlineGameId) return;
     clearInterval(timer);
     mode = "solo";
     snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 }];
@@ -176,6 +185,7 @@
     score = 0;
     food = foodPosition();
     running = true;
+    soloTurnPending = false;
     document.getElementById("score").textContent = 0;
     document.getElementById("message").textContent = "Good luck!";
     draw();
@@ -198,24 +208,73 @@
 
   function turn(nextDirection) {
     if (mode === "online") {
+      const p = getPlayer();
+      if (!p || !onlineGameId || onlineState !== "running" ||
+          !onlineDirectionKnown || pendingOnlineTurn) return;
       const dot = direction.x * nextDirection.x + direction.y * nextDirection.y;
       const cross = direction.x * nextDirection.y - direction.y * nextDirection.x;
       if (dot !== 0) return;
 
       const action = cross > 0 ? "right" : "left";
-      direction = nextDirection;
-      const p = getPlayer();
-      if (onlineGameId && p) {
-        sendSnakeAction(onlineGameId, p.playerId, action).catch(
-          error => showOnlineMessage("Could not send move: " + error.message)
-        );
-      }
+      const gameId = onlineGameId;
+      const requestedTurn = { x: nextDirection.x, y: nextDirection.y, head: onlineHead };
+      pendingOnlineTurn = requestedTurn;
+      sendSnakeAction(gameId, p.playerId, action).catch(error => {
+        if (onlineGameId === gameId && pendingOnlineTurn === requestedTurn) {
+          pendingOnlineTurn = null;
+          showOnlineMessage("Could not send move: " + error.message);
+        }
+      });
       return;
     }
 
     if (!running) startSoloGame();
-    if (nextDirection.x !== -direction.x || nextDirection.y !== -direction.y) {
+    if (!soloTurnPending && direction.x * nextDirection.x + direction.y * nextDirection.y === 0) {
       direction = nextDirection;
+      soloTurnPending = true;
+    }
+  }
+
+  function updateOnlineDirection(board, scores) {
+    const p = getPlayer();
+    const seat = scores.findIndex(entry => entry.player === p.playerId);
+    if (seat < 0) {
+      onlineDirectionKnown = false;
+      return;
+    }
+    const headToken = seat === 0 ? "A" : "B";
+    const bodyToken = headToken.toLowerCase();
+    let head = null;
+    board.forEach((row, y) => row.forEach((cell, x) => {
+      if (cell === headToken) head = { x, y };
+    }));
+    if (!head) {
+      onlineDirectionKnown = false;
+      return;
+    }
+
+    const moved = !onlineHead || head.x !== onlineHead.x || head.y !== onlineHead.y;
+    if (onlineState === "waiting") {
+      direction = seat === 0 ? { x: 1, y: 0 } : { x: -1, y: 0 };
+      onlineDirectionKnown = true;
+    } else if (moved) {
+      const dx = onlineHead ? head.x - onlineHead.x : 0;
+      const dy = onlineHead ? head.y - onlineHead.y : 0;
+      if (onlineHead && Math.abs(dx) + Math.abs(dy) === 1) {
+        direction = { x: dx, y: dy };
+        onlineDirectionKnown = true;
+      } else {
+        const neighbours = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }]
+          .filter(offset => (board[head.y + offset.y] || [])[head.x + offset.x] === bodyToken);
+        onlineDirectionKnown = neighbours.length === 1;
+        if (onlineDirectionKnown) direction = { x: -neighbours[0].x, y: -neighbours[0].y };
+      }
+    }
+    onlineHead = head;
+    if (pendingOnlineTurn && onlineDirectionKnown &&
+        (head.x !== pendingOnlineTurn.head.x || head.y !== pendingOnlineTurn.head.y) &&
+        direction.x === pendingOnlineTurn.x && direction.y === pendingOnlineTurn.y) {
+      pendingOnlineTurn = null;
     }
   }
 
@@ -233,13 +292,13 @@
     return matches[0] || null;
   }
 
-  async function refreshAvailableGames() {
+  async function refreshAvailableGames(reconnect = true) {
     availableGames.replaceChildren();
     try {
       const games = await getAvailableSnakeGames();
       if (!Array.isArray(games)) throw new Error("Unexpected room list response.");
       const rp2 = getPlayer();
-      if (rp2 && !onlineGameId) {
+      if (reconnect && rp2 && !onlineGameId) {
         const previousGame = matchingOpenGame(games);
         if (previousGame) {
           beginOnlineGame(previousGame.gameId, true);
@@ -279,13 +338,18 @@
     running = false;
     mode = "online";
     onlineGameId = gameId;
+    onlineState = "waiting";
+    onlineReady = false;
+    onlineHead = null;
+    onlineDirectionKnown = false;
+    pendingOnlineTurn = null;
     direction = isHost ? { x: 1, y: 0 } : { x: -1, y: 0 };
     updatePlayerUI();
     draw();
     canvas.focus({ preventScroll: true });
     showOnlineMessage(isHost
-      ? "Room created. Start the game when the other player joins."
-      : "Joined the room. Start when both players are ready.");
+      ? "Room created. Both players must click Ready / Start."
+      : "Joined the room. Both players must click Ready / Start.");
     try {
       const p = getPlayer();
       localStorage.setItem(savedGameKey(p.playerId), JSON.stringify({ gameId, isHost }));
@@ -307,7 +371,7 @@
       if (/already in a game/i.test(error.message)) {
         await refreshAvailableGames();
         if (!onlineGameId) {
-          showOnlineMessage("This account is already in a game on the server, but no open room was listed. Use \"Force Leave Stuck Game\" below to clear your local state, then try creating a new game.");
+          showOnlineMessage("This account is already in a game on the server, but no open room was listed. Use \"Recover previous game\" to enter its Game ID and leave it.");
         }
       } else {
         showOnlineMessage("Could not create game: " + error.message);
@@ -330,13 +394,56 @@
   async function startOnlineGame() {
     const p = getPlayer();
     if (!p || !onlineGameId) return;
+    const gameId = onlineGameId;
     try {
-      await startSnakeGame(p.playerId, onlineGameId);
-      showOnlineMessage("Game started. Use the arrow keys or WASD to move.");
+      const result = await startSnakeGame(p.playerId, gameId);
+      if (onlineGameId !== gameId) return;
+      onlineReady = true;
+      updatePlayerUI();
+      showOnlineMessage(result.state === "running"
+        ? "Game started. Use the arrow keys or WASD to move."
+        : "You are ready. Waiting for the other player to join and click Ready / Start.");
       await refreshOnlineState();
     } catch (error) {
       showOnlineMessage("Could not start game: " + error.message);
     }
+  }
+
+  function clearOnlineGame() {
+    clearInterval(pollTimer);
+    clearInterval(timer);
+    const p = getPlayer();
+    if (p) localStorage.removeItem(savedGameKey(p.playerId));
+    onlineGameId = null;
+    onlineState = "waiting";
+    onlineReady = false;
+    onlineHead = null;
+    onlineDirectionKnown = false;
+    pendingOnlineTurn = null;
+    mode = "solo";
+    running = false;
+    updatePlayerUI();
+    draw();
+    document.getElementById("score").textContent = score;
+    document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
+    document.getElementById("forceLeavePanel").hidden = true;
+    document.getElementById("forceLeaveGameId").value = "";
+  }
+
+  async function leaveGameById(gameId) {
+    const p = getPlayer();
+    let alreadyGone = false;
+    try {
+      await leaveSnakeGame(gameId, p.playerId);
+    } catch (error) {
+      if (error.status !== 404) throw error;
+      alreadyGone = true;
+    }
+    if (!onlineGameId || onlineGameId === gameId) clearOnlineGame();
+    document.getElementById("forceLeavePanel").hidden = true;
+    document.getElementById("forceLeaveGameId").value = "";
+    showOnlineMessage(alreadyGone ? "That game no longer exists." : "You left the online game.");
+    await refreshAvailableGames(false);
   }
 
   async function leaveOnlineGame() {
@@ -347,7 +454,7 @@
         if (!Array.isArray(games)) throw new Error("Unexpected room list response.");
         const previousGame = matchingOpenGame(games);
         if (!previousGame) {
-          showOnlineMessage("No open room was found for this account. Use \"Force Leave Stuck Game\" below to clear your local state, then try creating a new game.");
+          showOnlineMessage("No open room was found for this account. Use \"Recover previous game\" if you know the Game ID of a previous game.");
           return;
         }
         beginOnlineGame(previousGame.gameId, true);
@@ -357,43 +464,19 @@
       }
     }
     try {
-      const lp = getPlayer();
-      await leaveSnakeGame(onlineGameId, lp.playerId);
-      clearInterval(pollTimer);
-      localStorage.removeItem(savedGameKey(lp.playerId));
-      onlineGameId = null;
-      mode = "solo";
-      updatePlayerUI();
-      draw();
-      document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
-      showOnlineMessage("You left the online game.");
-      await refreshAvailableGames();
+      await leaveGameById(onlineGameId);
     } catch (error) {
       showOnlineMessage("Could not leave game: " + error.message);
     }
   }
 
-  async function forceResetGame() {
+  function showGameRecovery() {
     if (!getPlayer()) return;
-    clearInterval(timer);
-    clearInterval(pollTimer);
-    const stuckGameId = onlineGameId;
-    onlineGameId = null;
-    mode = "solo";
-    running = false;
-    const p = getPlayer();
-    try {
-      localStorage.removeItem(savedGameKey(p.playerId));
-    } catch (e) {}
-    updatePlayerUI();
-    draw();
-    document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
     document.getElementById("forceLeavePanel").hidden = false;
-    if (stuckGameId) {
-      document.getElementById("forceLeaveGameId").value = stuckGameId;
+    if (onlineGameId) {
+      document.getElementById("forceLeaveGameId").value = onlineGameId;
     }
-    showOnlineMessage("Local state cleared. Your Game ID is shown above — click \"Force Leave by Game ID\" to tell the server to release you.");
-    await refreshAvailableGames();
+    showOnlineMessage("Enter the previous Game ID, then click Leave this game. Your saved connection stays in place until the server confirms you left.");
   }
 
   async function forceLeaveById() {
@@ -406,44 +489,58 @@
     const p = getPlayer();
     if (!p) return showOnlineMessage("Sign in first.");
     try {
-      await leaveSnakeGame(gameId, p.playerId);
-      clearInterval(timer);
-      clearInterval(pollTimer);
-      onlineGameId = null;
-      mode = "solo";
-      running = false;
-      try {
-        localStorage.removeItem(savedGameKey(p.playerId));
-      } catch (e) {}
-      updatePlayerUI();
-      draw();
-      document.getElementById("message").textContent = "Press Start or an arrow key to begin.";
-      document.getElementById("forceLeavePanel").hidden = true;
-      gameIdInput.value = "";
-      showOnlineMessage("Server released you from game " + gameId + ". You can now create a new game.");
-      await refreshAvailableGames();
+      await leaveGameById(gameId);
     } catch (error) {
-      showOnlineMessage("Could not force leave game " + gameId + ": " + error.message);
+      showOnlineMessage("Could not leave game " + gameId + ": " + error.message);
     }
   }
 
   async function refreshOnlineState() {
     if (!onlineGameId || onlineStateBusy) return;
     onlineStateBusy = true;
+    const gameId = onlineGameId;
     try {
-      const state = await getSnakeState(onlineGameId);
-      if (!state || !Array.isArray(state.board)) {
+      const state = await getSnakeState(gameId);
+      if (onlineGameId !== gameId || !getPlayer()) return;
+      if (!state || !Array.isArray(state.board) || !Array.isArray(state.scores) ||
+          !["waiting", "running", "ended"].includes(state.state)) {
         throw new Error("The server returned an invalid game state.");
       }
+      const previousState = onlineState;
+      onlineState = state.state;
       drawOnlineBoard(state.board);
+      updateOnlineDirection(state.board, state.scores);
       const rp = getPlayer();
       const ownScore = Array.isArray(state.scores)
         ? state.scores.find(entry => entry.player === rp.playerId)
         : null;
       document.getElementById("score").textContent = ownScore ? ownScore.score : 0;
-      showOnlineMessage("Room " + onlineGameId + " · " + (state.state || "connected"));
+      const seat = state.scores.findIndex(entry => entry.player === rp.playerId);
+      const colour = seat === 0 ? "green" : "blue";
+      document.getElementById("message").textContent = "Online Snake: you control the " + colour + " snake.";
+      if (onlineState === "waiting") {
+        showOnlineMessage(onlineReady
+          ? "You are ready. Waiting for the other player to join and click Ready / Start."
+          : "Waiting. Both players must click Ready / Start.");
+      } else if (onlineState === "running") {
+        showOnlineMessage(onlineDirectionKnown ? "Game running. Use the arrow keys or WASD." : "Game running. Synchronizing controls…");
+      } else {
+        pendingOnlineTurn = null;
+        clearInterval(pollTimer);
+        document.getElementById("message").textContent = "Game over! Final score: " + (ownScore ? ownScore.score : 0);
+        showOnlineMessage("Game ended. Click Leave game before creating or joining another room.");
+        if (previousState !== "ended") loadOnlineLeaderboard();
+      }
+      updatePlayerUI();
     } catch (error) {
-      showOnlineMessage("Could not update game: " + error.message);
+      if (onlineGameId !== gameId) return;
+      if (error.status === 404) {
+        clearOnlineGame();
+        showOnlineMessage("This room no longer exists. You can create or join another game.");
+        refreshAvailableGames(false);
+      } else {
+        showOnlineMessage("Could not update game: " + error.message);
+      }
     } finally {
       onlineStateBusy = false;
     }
@@ -533,7 +630,7 @@
   document.getElementById("refreshGames").addEventListener("click", refreshAvailableGames);
   document.getElementById("startGame").addEventListener("click", startOnlineGame);
   document.getElementById("leaveGame").addEventListener("click", leaveOnlineGame);
-  document.getElementById("forceResetGame").addEventListener("click", forceResetGame);
+  document.getElementById("forceResetGame").addEventListener("click", showGameRecovery);
   document.getElementById("forceLeaveById").addEventListener("click", forceLeaveById);
 
   const savedPlayer = loadPlayer();
