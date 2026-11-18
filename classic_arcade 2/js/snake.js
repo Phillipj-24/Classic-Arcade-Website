@@ -197,17 +197,25 @@
   };
 
   function turn(nextDirection) {
+    if (mode === "online") {
+      const dot = direction.x * nextDirection.x + direction.y * nextDirection.y;
+      const cross = direction.x * nextDirection.y - direction.y * nextDirection.x;
+      if (dot !== 0) return;
+
+      const action = cross > 0 ? "right" : "left";
+      direction = nextDirection;
+      const p = getPlayer();
+      if (onlineGameId && p) {
+        sendSnakeAction(onlineGameId, p.playerId, action).catch(
+          error => showOnlineMessage("Could not send move: " + error.message)
+        );
+      }
+      return;
+    }
+
     if (!running) startSoloGame();
     if (nextDirection.x !== -direction.x || nextDirection.y !== -direction.y) {
       direction = nextDirection;
-      if (mode === "online") {
-        const qp = getPlayer();
-        if (onlineGameId && qp) {
-          sendSnakeAction(onlineGameId, qp.playerId, nextDirection.action).catch(
-            error => showOnlineMessage("Could not send move: " + error.message)
-          );
-        }
-      }
     }
   }
 
@@ -271,6 +279,7 @@
     running = false;
     mode = "online";
     onlineGameId = gameId;
+    direction = isHost ? { x: 1, y: 0 } : { x: -1, y: 0 };
     updatePlayerUI();
     draw();
     canvas.focus({ preventScroll: true });
@@ -283,12 +292,6 @@
     } catch (error) {
       showOnlineMessage("Connected, but could not save this game for your next sign-in: " + error.message);
     }
-    // Start local game loop at solo speed for responsive input/movement
-    running = true;
-    timer = setInterval(() => {
-      if (running && mode === "online") tick();
-    }, 115);
-    // Poll server state at a faster interval to sync board and show opponent
     pollTimer = setInterval(refreshOnlineState, 200);
     refreshOnlineState();
   }
